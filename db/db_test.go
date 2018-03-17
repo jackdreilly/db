@@ -7,6 +7,7 @@ import (
 
 func DbOptionsTest() DbOptions {
 	o := DefaultDbOptions()
+	o.Filename = ".test.csv"
 	o.Overwrite = true
 	return o
 }

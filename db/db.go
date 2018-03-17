@@ -14,11 +14,9 @@ const (
 )
 
 type Db struct {
-	l       net.Listener
-	logFile *os.File
-	log     *csv.Writer
-	d       map[string]string
-	closed  bool
+	l          net.Listener
+	d          map[string]string
+	logChannel chan []string
 }
 
 type DbOptions struct {
@@ -40,20 +38,17 @@ func DefaultClientOptions() ClientOptions {
 }
 
 func (db *Db) Close() {
-	db.closed = true
-	db.log.Flush()
-	db.logFile.Close()
-	db.l.Close()
+	go func() {
+		db.l.Close()
+	}()
 }
 
 func NewDb(o DbOptions) (*Db, error) {
 	db := &Db{}
+	db.logChannel = make(chan []string)
 	db.d = map[string]string{}
 	if o.Overwrite {
-		err := os.Remove(o.Filename)
-		if err != nil {
-			return db, nil
-		}
+		os.Remove(o.Filename)
 	}
 	_, err := os.Stat(o.Filename)
 	fileExists := !os.IsNotExist(err)
@@ -80,26 +75,46 @@ func NewDb(o DbOptions) (*Db, error) {
 			}
 		}
 	}
-	if fileExists {
-		db.logFile, err = os.OpenFile(o.Filename, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
-	} else {
-		db.logFile, err = os.Create(o.Filename)
-	}
-	if err != nil {
-		return db, err
-	}
-	db.log = csv.NewWriter(db.logFile)
 	db.l, err = net.Listen("tcp", fmt.Sprintf(":%d", o.Port))
 	if err != nil {
 		return db, err
 	}
 	go func() {
+		var logFile *os.File
+		if fileExists {
+			logFile, err = os.OpenFile(o.Filename, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+		} else {
+			logFile, err = os.Create(o.Filename)
+		}
+		defer logFile.Close()
+		if err != nil {
+			panic(err)
+		}
+		log := csv.NewWriter(logFile)
+
+		for r := range db.logChannel {
+			e := log.Write(r)
+			if e != nil {
+				panic(e)
+			}
+			log.Flush()
+		}
+	}()
+	connChan := make(chan net.Conn)
+	go func() {
+		defer close(connChan)
 		for {
 			conn, err := db.l.Accept()
 			if err != nil {
 				db.logM("error", "connection", err.Error())
 				return
 			}
+			connChan <- conn
+		}
+	}()
+	go func() {
+		defer close(db.logChannel)
+		for c := range connChan {
 			go func(c net.Conn) {
 				defer c.Close()
 				for {
@@ -144,7 +159,7 @@ func NewDb(o DbOptions) (*Db, error) {
 						return
 					}
 				}
-			}(conn)
+			}(c)
 		}
 	}()
 	return db, nil
@@ -166,16 +181,8 @@ func (db *Db) Set(key, value string) error {
 	db.logM("set", key, value)
 	return nil
 }
-func (db *Db) logM(mType string, a string, b string) {
-	if db.closed {
-		fmt.Println("closed", mType, a, b)
-		return
-	}
-	e := db.log.Write([]string{mType, a, b})
-	if e != nil {
-		panic(e)
-	}
-	db.log.Flush()
+func (db *Db) logM(r ...string) {
+	db.logChannel <- r
 }
 
 type Client struct {
