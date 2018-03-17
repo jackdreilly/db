@@ -1,4 +1,7 @@
 # db
+
+[![Build Status](https://travis-ci.org/stretchr/testify.svg)](https://travis-ci.org/stretchr/testify) [![Go Report Card]
+
 Super duper simple, csv-backed tcp key-value store
 
 How to start server:
