@@ -1,6 +1,6 @@
 # db
 
-[![Build Status](https://travis-ci.org/stretchr/testify.svg)](https://travis-ci.org/stretchr/testify) [![Go Report Card]
+[![Build Status](https://travis-ci.org/stretchr/testify.svg)](https://travis-ci.org/jackdreilly/db)
 
 Super duper simple, csv-backed tcp key-value store
 
