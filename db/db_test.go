@@ -3,9 +3,6 @@ package db
 import (
 	"testing"
 	"github.com/stretchr/testify/assert"
-	"bytes"
-	"encoding/csv"
-	"fmt"
 )
 
 func DbOptionsTest() DbOptions {
@@ -36,20 +33,7 @@ func TestDb(t *testing.T) {
 	v, e = db.Get("a")
 	assert.Nil(t, e)
 	assert.Equal(t, "c", v)
-}
-
-func TestCsv(t *testing.T) {
-	b := &bytes.Buffer{}
-	reader := csv.NewReader(b)
-	fmt.Println(b.String())
-	csv.NewWriter(b).Write([]string{"hi"})
-	fmt.Println(b.String())
-	assert.Equal(t, "hi", b.String())
-	r, e := reader.Read()
-	assert.Nil(t,e)
-	assert.Equal(t, []string{"hi"}, r)
-
-}
+}	
 
 func TestClient(t *testing.T) {
 	db, e := NewDb(DbOptionsTest())
