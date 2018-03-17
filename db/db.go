@@ -98,7 +98,7 @@ func NewDb(o DbOptions) (*Db, error) {
 			conn, err := db.l.Accept()
 			if err != nil {
 				db.logM("error", "connection", err.Error())
-				continue
+				return
 			}
 			go func(c net.Conn) {
 				defer c.Close()
@@ -168,7 +168,7 @@ func (db *Db) Set(key, value string) error {
 }
 func (db *Db) logM(mType string, a string, b string) {
 	if db.closed {
-		fmt.Println("closed")
+		fmt.Println("closed", mType, a, b)
 		return
 	}
 	e := db.log.Write([]string{mType, a, b})
