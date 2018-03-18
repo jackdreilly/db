@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 )
 
 const (
@@ -16,7 +17,7 @@ const (
 type Db struct {
 	l          net.Listener
 	d          map[string]string
-	logChannel chan []string
+	logger     chan<-[]string
 }
 
 type DbOptions struct {
@@ -38,14 +39,11 @@ func DefaultClientOptions() ClientOptions {
 }
 
 func (db *Db) Close() {
-	go func() {
-		db.l.Close()
-	}()
+	db.l.Close()
 }
 
 func NewDb(o DbOptions) (*Db, error) {
 	db := &Db{}
-	db.logChannel = make(chan []string)
 	db.d = map[string]string{}
 	if o.Overwrite {
 		os.Remove(o.Filename)
@@ -79,43 +77,30 @@ func NewDb(o DbOptions) (*Db, error) {
 	if err != nil {
 		return db, err
 	}
+	var logFile *os.File
+	if fileExists {
+		logFile, err = os.OpenFile(o.Filename, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	} else {
+		logFile, err = os.Create(o.Filename)
+	}
+	if err != nil {
+		panic(err)
+	}
+	db.logger = CreateCsvLogger(logFile)
+	connChan := SocketChannels(db.l)
+	// Not sure how to not get away with this wait group.
+	// We need to know when all connections are closed before closing the logger, because a connection may request
+	// to dump something to the logger.
+	wg := sync.WaitGroup{}
 	go func() {
-		var logFile *os.File
-		if fileExists {
-			logFile, err = os.OpenFile(o.Filename, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
-		} else {
-			logFile, err = os.Create(o.Filename)
-		}
-		defer logFile.Close()
-		if err != nil {
-			panic(err)
-		}
-		log := csv.NewWriter(logFile)
-
-		for r := range db.logChannel {
-			e := log.Write(r)
-			if e != nil {
-				panic(e)
-			}
-			log.Flush()
-		}
-	}()
-	connChan := make(chan net.Conn)
-	go func() {
-		defer close(connChan)
-		for {
-			conn, err := db.l.Accept()
-			if err != nil {
-				db.logM("error", "connection", err.Error())
-				return
-			}
-			connChan <- conn
-		}
-	}()
-	go func() {
-		defer close(db.logChannel)
+		defer func() {
+			wg.Wait()
+			close(db.logger)
+		}()
 		for c := range connChan {
+			wg.Add(1)
 			go func(c net.Conn) {
+				defer wg.Done()
 				defer c.Close()
 				for {
 					reader := csv.NewReader(c)
@@ -182,7 +167,7 @@ func (db *Db) Set(key, value string) error {
 	return nil
 }
 func (db *Db) logM(r ...string) {
-	db.logChannel <- r
+	db.logger <- r
 }
 
 type Client struct {
