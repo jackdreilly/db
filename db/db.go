@@ -202,7 +202,6 @@ func (c *Client) Set(key, value string) error {
 	writer := csv.NewWriter(c.conn)
 	e := writer.Write([]string{"set", key, value})
 	if e != nil {
-		fmt.Println("writer error")
 		return e
 	}
 	writer.Flush()
