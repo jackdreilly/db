@@ -8,7 +8,7 @@ import (
 	"encoding/csv"
 )
 
-func DbOptionsTest() DbOptions {
+func DbOptionsTest() Options {
 	o := DefaultDbOptions()
 	o.Filename = ".test.csv"
 	o.Overwrite = true

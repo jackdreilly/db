@@ -20,7 +20,7 @@ type Db struct {
 	logger     chan<-[]string
 }
 
-type DbOptions struct {
+type Options struct {
 	Filename  string
 	Port      int32
 	Overwrite bool
@@ -30,8 +30,8 @@ type ClientOptions struct {
 	Port int32
 }
 
-func DefaultDbOptions() DbOptions {
-	return DbOptions{defaultFilename, defaultPort, false}
+func DefaultDbOptions() Options {
+	return Options{defaultFilename, defaultPort, false}
 }
 
 func DefaultClientOptions() ClientOptions {
@@ -42,7 +42,7 @@ func (db *Db) Close() {
 	db.l.Close()
 }
 
-func NewDb(o DbOptions) (*Db, error) {
+func NewDb(o Options) (*Db, error) {
 	db := &Db{}
 	db.d = map[string]string{}
 	if o.Overwrite {
