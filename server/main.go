@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackdreilly/db/db"
 	"os/signal"
+	"fmt"
 )
 
 var (
@@ -31,6 +32,7 @@ func main() {
 	if len(*filename) > 0 {
 		o.Filename = *filename
 	}
+	fmt.Printf("Saving to %s and listening on port %d...\n", o.Filename, o.Port)
 	d, e := db.NewDb(o)
 	defer d.Close()
 	check(e)
