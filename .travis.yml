@@ -2,8 +2,6 @@ sudo: false
 language: go
 
 go:
-  - 1.8
-  - 1.9
   - tip
 
 os:
@@ -11,8 +9,7 @@ os:
   - osx
 
 matrix:
-  allow_failures:
-    - go: tip
+    - os: linux
   fast_finish: true
 
 script:
