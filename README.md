@@ -4,6 +4,8 @@
 
 Super duper simple, csv-backed tcp key-value store
 
+Database backing http://comments.reillybrothers.net and comments.js
+
 How to start server:
 
 cd server
