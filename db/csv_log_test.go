@@ -19,10 +19,12 @@ func (c *TestWriteCloser) Close() error {
 func TestCreateCsvLogger(t *testing.T) {
 	var w io.ReadWriteCloser
 	w = &TestWriteCloser{}
-	logger := CreateCsvLogger(w)
-	defer close(logger)
+	logger, done := CreateCsvLogger(w)
 	logger<-[]string{"howdy","jack"}
-	r, e := csv.NewReader(w).Read()
+	close(logger)
+	<-done
+	reader := csv.NewReader(w)
+	r, e := reader.Read()
 	assert.Nil(t,e)
 	assert.Equal(t, []string{"howdy","jack"}, r)
 }

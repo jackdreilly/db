@@ -86,7 +86,8 @@ func NewDb(o Options) (*Db, error) {
 	if err != nil {
 		panic(err)
 	}
-	db.logger = CreateCsvLogger(logFile)
+	var done <-chan bool
+	db.logger, done = CreateCsvLogger(logFile)
 	connChan := SocketChannels(db.l)
 	// Not sure how to not get away with this wait group.
 	// We need to know when all connections are closed before closing the logger, because a connection may request
@@ -96,6 +97,7 @@ func NewDb(o Options) (*Db, error) {
 		defer func() {
 			wg.Wait()
 			close(db.logger)
+			<-done
 		}()
 		for c := range connChan {
 			wg.Add(1)
