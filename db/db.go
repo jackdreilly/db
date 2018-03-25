@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"sync"
@@ -15,9 +16,9 @@ const (
 )
 
 type Db struct {
-	l          net.Listener
-	d          map[string]string
-	logger     chan<-[]string
+	l      net.Listener
+	d      map[string]string
+	logger chan<- []string
 }
 
 type Options struct {
@@ -57,19 +58,26 @@ func NewDb(o Options) (*Db, error) {
 			return db, e
 		}
 		r := csv.NewReader(f)
-		records, e := r.ReadAll()
+		var records = make([][]string, 0)
+		for {
+			r.FieldsPerRecord = 0
+			rec, e := r.Read()
+			if e == io.EOF {
+				break
+			}
+			records = append(records, rec)
+		}
 		if e != nil {
 			return db, e
 		}
 		for _, record := range records {
 			if len(record) < 1 {
-				return db, errors.New("Db log file should have at least 1 element")
+				return db, errors.New("db log file should have at least 1 element")
 			}
 			if record[0] == "set" {
-				if len(record) < 3 {
-					return db, errors.New(fmt.Sprintf("Db log set command should have format 'set key value', was %v", record))
+				if e = db.Set(record[1:]...); e != nil {
+					return nil, e
 				}
-				db.d[record[1]] = record[2]
 			}
 		}
 	}
@@ -115,7 +123,7 @@ func NewDb(o Options) (*Db, error) {
 						return
 					}
 					if r[0] == "get" {
-						v, e := db.Get(r[1])
+						v, e := db.Get(r[1:]...)
 						if e != nil {
 							writer.Write([]string{"error", e.Error()})
 							writer.Flush()
@@ -126,11 +134,11 @@ func NewDb(o Options) (*Db, error) {
 						continue
 					} else if r[0] == "set" {
 						if len(r) < 3 {
-							writer.Write([]string{"error", fmt.Sprintf("set command requires 2 arguments, saw %v", r)})
+							writer.Write([]string{"error", fmt.Sprintf("set command requires 2 arguments, saw %V", r)})
 							writer.Flush()
 							continue
 						}
-						e := db.Set(r[1], r[2])
+						e := db.Set(r[1:]...)
 						if e != nil {
 							writer.Write([]string{"error", e.Error()})
 							writer.Flush()
@@ -152,24 +160,54 @@ func NewDb(o Options) (*Db, error) {
 	return db, nil
 }
 
-func (db *Db) Get(key string) (string, error) {
-	v, p := db.d[key]
-	if !p {
-		db.logM("keymiss", key, "")
-		return v, errors.New("Could not find key " + key)
+func (db *Db) Get(r ...string) (string, error) {
+	gr := []string{"get"}
+	gr = append(gr, r...)
+	c, e := parseCommand(gr)
+	if e != nil {
+		db.logM("errorget", e.Error())
+		return "", e
 	}
-	db.logM("get", key, v)
+	existing, ok := db.d[c.top_key]
+	if !ok {
+		e = errors.New("top-level key miss " + c.top_key)
+		db.logM("errorget", e.Error())
+		return "", e
+	}
+	v, e := handleGet(existing, c)
+	if e != nil {
+		db.logM("errorget", e.Error())
+		return "", e
+	}
+	db.logM("get", r...)
 	return v, nil
-
 }
 
-func (db *Db) Set(key, value string) error {
-	db.d[key] = value
-	db.logM("set", key, value)
+func (db *Db) Set(r ...string) error {
+	gr := []string{"set"}
+	gr = append(gr, r...)
+	c, e := parseCommand(gr)
+	if e != nil {
+		db.logM("errorset", e.Error())
+		return e
+	}
+	v, e := handleSet(db.d[c.top_key], c)
+	if e != nil {
+		db.logM("errorget", e.Error())
+		return e
+	}
+	db.d[c.top_key] = v
+	db.logM("set", r...)
 	return nil
 }
-func (db *Db) logM(r ...string) {
-	db.logger <- r
+
+func (db *Db) logM(s string, r ...string) {
+	if db.logger == nil {
+		return
+	}
+	c := []string{s}
+	c = append(c, r...)
+	db.logger <- c
 }
 
 type Client struct {
@@ -183,9 +221,11 @@ func NewClient(o ClientOptions) (*Client, error) {
 	return c, err
 }
 
-func (c *Client) Get(key string) (string, error) {
+func (c *Client) Get(command ...string) (string, error) {
 	writer := csv.NewWriter(c.conn)
-	e := writer.Write([]string{"get", key})
+	rs := []string{"get"}
+	rs = append(rs, command...)
+	e := writer.Write(rs)
 	if e != nil {
 		return "", e
 	}
@@ -200,9 +240,11 @@ func (c *Client) Get(key string) (string, error) {
 	return r[1], nil
 }
 
-func (c *Client) Set(key, value string) error {
+func (c *Client) Set(command ...string) error {
 	writer := csv.NewWriter(c.conn)
-	e := writer.Write([]string{"set", key, value})
+	rs := []string{"set"}
+	rs = append(rs, command...)
+	e := writer.Write(rs)
 	if e != nil {
 		return e
 	}

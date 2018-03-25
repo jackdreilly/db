@@ -5,14 +5,14 @@ import (
 	"os"
 	"strconv"
 
+	"fmt"
 	"github.com/jackdreilly/db/db"
 	"os/signal"
-	"fmt"
 )
 
 var (
 	filename = flag.String("file", "", "Optional path to db file")
-	port = flag.Int64("port", 0, "TCP port to listen on, defaults to PORT env")
+	port     = flag.Int64("port", 0, "TCP port to listen on, defaults to PORT env")
 )
 
 func main() {

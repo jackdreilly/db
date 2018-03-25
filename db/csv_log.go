@@ -1,11 +1,11 @@
 package db
 
 import (
-	"io"
 	"encoding/csv"
+	"io"
 )
 
-func CreateCsvLogger(w io.WriteCloser) (chan<-[]string, <-chan bool) {
+func CreateCsvLogger(w io.WriteCloser) (chan<- []string, <-chan bool) {
 	c := make(chan []string)
 	d := make(chan bool)
 	cW := csv.NewWriter(w)
@@ -17,7 +17,7 @@ func CreateCsvLogger(w io.WriteCloser) (chan<-[]string, <-chan bool) {
 			//time.Sleep(time.Second)
 			cW.Flush()
 		}
-		d<-true
+		d <- true
 	}()
 	return c, d
 }
