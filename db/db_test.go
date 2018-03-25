@@ -52,6 +52,26 @@ func TestClient(t *testing.T) {
 	v, e := c.Get("a")
 	assert.Nil(t, e)
 	assert.Equal(t, "b", v)
+
+
+	assert.Nil(t, c.Set("mapkey", "->", "key", "value"))
+	v, e = c.Get("mapkey", "->", "key")
+	assert.Nil(t,e)
+	assert.Equal(t, "value", v)
+
+	assert.Nil(t, c.Append("ap", "apa"))
+	assert.Nil(t, c.Append("ap", "apb"))
+	l, e := c.GetList("ap")
+	assert.Nil(t,e)
+	assert.Equal(t,[]string{"apa", "apb"}, l)
+
+	l, e = c.GetList("a")
+	assert.Nil(t,e)
+	assert.Empty(t,l)
+
+	l, e = c.GetList("mapkey")
+	assert.Nil(t,e)
+	assert.Empty(t,l)
 }
 
 func TestTcp(t *testing.T) {
@@ -84,5 +104,6 @@ func TestTcp(t *testing.T) {
 	assert.Nil(t, e)
 	assert.NotEmpty(t, r)
 	assert.Equal(t, "ok", r[0])
-
 }
+
+

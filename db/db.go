@@ -8,6 +8,8 @@ import (
 	"net"
 	"os"
 	"sync"
+	"encoding/json"
+	"strings"
 )
 
 const (
@@ -259,6 +261,30 @@ func (c *Client) Set(command ...string) error {
 	}
 	return nil
 }
+
+func (c *Client) GetList(key string) ([]string, error) {
+	r, e := c.Get(key)
+	if e != nil{
+		return nil, e
+	}
+	var s storeValue
+	if e = json.NewDecoder(strings.NewReader(r)).Decode(&s); e != nil {
+		return []string{}, nil
+	}
+	if s.L == nil {
+		return []string{}, nil
+	}
+	v := make([]string, len(s.L))
+	for i := 0; i < len(v); i++ {
+		v[i] = s.L[i].V
+	}
+	return v, nil
+}
+
+func (c *Client) Append(key, value string) error {
+	return c.Set(key, "+","+",value)
+}
+
 
 func (client *Client) Close() {
 	client.conn.Close()
