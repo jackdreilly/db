@@ -267,7 +267,7 @@ func parseGet(c *command, r []string) (*command, error) {
 		return c, e
 	}
 	if len(r) != 0 {
-		return c, errors.New(fmt.Sprintf("Extra values received on get: %V", r))
+		return c, errors.New(fmt.Sprintf("Extra values received on get: %v", r))
 	}
 	return c, e
 }
