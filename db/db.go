@@ -136,7 +136,7 @@ func NewDb(o Options) (*Db, error) {
 						continue
 					} else if r[0] == "set" {
 						if len(r) < 3 {
-							writer.Write([]string{"error", fmt.Sprintf("set command requires 2 arguments, saw %V", r)})
+							writer.Write([]string{"error", fmt.Sprintf("set command requires 2 arguments, saw %v", r)})
 							writer.Flush()
 							continue
 						}
