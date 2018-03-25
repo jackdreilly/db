@@ -49,7 +49,7 @@ But the database supports list and map storage types as well. Note that all exte
 
 ```
 set,my top key,+,+,appended value
-set,my top key,+,0,appended value
+get,my top key,+,0,appended value
 ```
 
 The double `+` means append the "appended value" to the list structure in "my top key"
